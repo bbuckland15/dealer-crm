@@ -21,6 +21,10 @@ export const api = {
 
   listNotes: (id) => request(`/customers/${id}/notes`),
   addNote: (id, body) => request(`/customers/${id}/notes`, { method: 'POST', body: JSON.stringify({ body }) }),
+  updateNote: (customerId, noteId, body) =>
+    request(`/customers/${customerId}/notes/${noteId}`, { method: 'PATCH', body: JSON.stringify({ body }) }),
+  deleteNote: (customerId, noteId) =>
+    request(`/customers/${customerId}/notes/${noteId}`, { method: 'DELETE' }),
 
   listInteractions: (id) => request(`/customers/${id}/interactions`),
 

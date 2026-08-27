@@ -40,6 +40,10 @@ class NoteCreate(BaseModel):
     body: str
 
 
+class NoteUpdate(BaseModel):
+    body: str
+
+
 class Note(NoteCreate):
     model_config = ConfigDict(from_attributes=True)
     id: int

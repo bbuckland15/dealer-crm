@@ -69,6 +69,26 @@ def add_note(customer_id: int, payload: schemas.NoteCreate, db: Session = Depend
     return note
 
 
+@router.patch("/{customer_id}/notes/{note_id}", response_model=schemas.Note)
+def update_note(customer_id: int, note_id: int, payload: schemas.NoteUpdate, db: Session = Depends(get_db)):
+    note = db.get(models.Note, note_id)
+    if not note or note.customer_id != customer_id:
+        raise HTTPException(404, "Note not found")
+    note.body = payload.body
+    db.commit()
+    db.refresh(note)
+    return note
+
+
+@router.delete("/{customer_id}/notes/{note_id}", status_code=204)
+def delete_note(customer_id: int, note_id: int, db: Session = Depends(get_db)):
+    note = db.get(models.Note, note_id)
+    if not note or note.customer_id != customer_id:
+        raise HTTPException(404, "Note not found")
+    db.delete(note)
+    db.commit()
+
+
 # --- Interactions (call/email/text/visit/ai_outreach log) ---
 
 @router.get("/{customer_id}/interactions", response_model=List[schemas.Interaction])

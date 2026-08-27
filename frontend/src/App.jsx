@@ -54,7 +54,14 @@ export default function App() {
       </aside>
       <main className="main">
         {selected ? (
-          <CustomerDetail customer={selected} onChanged={refresh} />
+          <CustomerDetail
+            customer={selected}
+            onChanged={refresh}
+            onDeleted={() => {
+              setSelectedId(null)
+              refresh()
+            }}
+          />
         ) : (
           <p style={{ color: '#888' }}>Select a customer on the left, or create a new lead.</p>
         )}
