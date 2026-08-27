@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from . import models
 from .database import engine
-from .routers import customers, outreach
+from .routers import customers, outreach, inventory
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -18,6 +18,7 @@ app.add_middleware(
 
 app.include_router(customers.router)
 app.include_router(outreach.router)
+app.include_router(inventory.router)
 
 
 @app.get("/")

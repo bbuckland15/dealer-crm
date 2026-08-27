@@ -20,6 +20,11 @@ export default function CustomerDetail({ customer, onChanged, onDeleted }) {
   const [editingNoteId, setEditingNoteId] = useState(null)
   const [editingNoteBody, setEditingNoteBody] = useState('')
 
+  // Linking to a real inventory vehicle
+  const [vehicleQuery, setVehicleQuery] = useState('')
+  const [vehicleResults, setVehicleResults] = useState([])
+  const [searchingVehicles, setSearchingVehicles] = useState(false)
+
   const loadDetails = () => {
     api.listNotes(customer.id).then(setNotes)
     api.listInteractions(customer.id).then(setInteractions)
@@ -30,8 +35,25 @@ export default function CustomerDetail({ customer, onChanged, onDeleted }) {
     setDraft(null)
     setEditingInfo(false)
     setEditingNoteId(null)
+    setVehicleQuery('')
+    setVehicleResults([])
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [customer.id])
+
+  // Debounced vehicle search as you type
+  useEffect(() => {
+    if (!vehicleQuery.trim()) {
+      setVehicleResults([])
+      return
+    }
+    setSearchingVehicles(true)
+    const handle = setTimeout(() => {
+      api.searchVehicles(vehicleQuery.trim())
+        .then(setVehicleResults)
+        .finally(() => setSearchingVehicles(false))
+    }, 300)
+    return () => clearTimeout(handle)
+  }, [vehicleQuery])
 
   // --- Customer info editing ---
 
@@ -95,6 +117,20 @@ export default function CustomerDetail({ customer, onChanged, onDeleted }) {
     if (!confirm('Delete this note?')) return
     await api.deleteNote(customer.id, noteId)
     loadDetails()
+  }
+
+  // --- Linked vehicle ---
+
+  const linkVehicle = async (vehicleId) => {
+    await api.updateCustomer(customer.id, { vehicle_id: vehicleId })
+    setVehicleQuery('')
+    setVehicleResults([])
+    onChanged()
+  }
+
+  const unlinkVehicle = async () => {
+    await api.updateCustomer(customer.id, { vehicle_id: null })
+    onChanged()
   }
 
   // --- AI outreach ---
@@ -170,6 +206,85 @@ export default function CustomerDetail({ customer, onChanged, onDeleted }) {
         <select value={customer.status} onChange={changeStatus}>
           {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
         </select>
+      </div>
+
+      <div className="card">
+        <h3 style={{ marginTop: 0 }}>Linked Vehicle</h3>
+        {customer.vehicle ? (
+          <div style={{ display: 'flex', gap: 12 }}>
+            {customer.vehicle.image_url && (
+              <img
+                src={customer.vehicle.image_url}
+                alt=""
+                style={{ width: 140, height: 100, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }}
+              />
+            )}
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 600 }}>
+                {customer.vehicle.year} {customer.vehicle.make} {customer.vehicle.model} {customer.vehicle.trim}
+              </div>
+              <div style={{ fontSize: 13, color: '#666' }}>
+                {customer.vehicle.color && <>{customer.vehicle.color} &middot; </>}
+                {customer.vehicle.condition && <>{customer.vehicle.condition} &middot; </>}
+                VIN {customer.vehicle.vin}
+              </div>
+              {customer.vehicle.price != null && (
+                <div style={{ fontSize: 14, marginTop: 4 }}>${customer.vehicle.price.toLocaleString()}</div>
+              )}
+              <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
+                {customer.vehicle.source_url && (
+                  <a href={customer.vehicle.source_url} target="_blank" rel="noreferrer">
+                    <button type="button" style={{ fontSize: 12, padding: '4px 8px' }}>View listing</button>
+                  </a>
+                )}
+                <button
+                  type="button"
+                  onClick={unlinkVehicle}
+                  style={{ fontSize: 12, padding: '4px 8px', background: '#888' }}
+                >
+                  Unlink
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <>
+            <p style={{ fontSize: 13, color: '#666', marginTop: 0 }}>
+              Search synced inventory to link this customer to a real vehicle (VIN, price, photo).
+              Run "Sync Inventory" first if search comes up empty.
+            </p>
+            <input
+              placeholder="Search by make, model, trim, or VIN..."
+              value={vehicleQuery}
+              onChange={(e) => setVehicleQuery(e.target.value)}
+            />
+            {searchingVehicles && <p style={{ fontSize: 12, color: '#888' }}>Searching...</p>}
+            {vehicleResults.map((v) => (
+              <div
+                key={v.id}
+                onClick={() => linkVehicle(v.id)}
+                style={{
+                  padding: '8px 10px',
+                  border: '1px solid #eee',
+                  borderRadius: 6,
+                  marginBottom: 6,
+                  cursor: 'pointer',
+                }}
+              >
+                <div style={{ fontWeight: 600, fontSize: 14 }}>
+                  {v.year} {v.make} {v.model} {v.trim}
+                </div>
+                <div style={{ fontSize: 12, color: '#666' }}>
+                  {v.color && <>{v.color} &middot; </>}
+                  VIN {v.vin} {v.price != null && <>&middot; ${v.price.toLocaleString()}</>}
+                </div>
+              </div>
+            ))}
+            {vehicleQuery && !searchingVehicles && vehicleResults.length === 0 && (
+              <p style={{ fontSize: 12, color: '#888' }}>No matches.</p>
+            )}
+          </>
+        )}
       </div>
 
       <div className="card">

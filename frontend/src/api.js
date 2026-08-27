@@ -29,4 +29,7 @@ export const api = {
   listInteractions: (id) => request(`/customers/${id}/interactions`),
 
   draftOutreach: (id) => request(`/outreach/${id}/draft`, { method: 'POST' }),
+
+  searchVehicles: (q) => request(`/inventory/vehicles?q=${encodeURIComponent(q)}`),
+  syncInventory: () => request('/inventory/sync', { method: 'POST' }),
 }
