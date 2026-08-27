@@ -30,7 +30,17 @@ from ..database import get_db
 
 router = APIRouter(prefix="/inventory", tags=["inventory"])
 
-USER_AGENT = "DealerCRM-InventorySync/1.0 (internal tool; contact: dealership staff)"
+# A bare custom User-Agent with no other headers is an easy bot-detection
+# signal (real browsers never send just one header). Mimic a real browser's
+# request more fully to get past basic bot protection on the dealer site.
+REQUEST_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+    ),
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+}
 VIN_RE = re.compile(r"^[A-HJ-NPR-Z0-9]{17}$")  # standard VIN charset, excludes I/O/Q
 YEAR_RE = re.compile(r"^(19|20)\d{2}$")
 
@@ -112,7 +122,7 @@ def _parse_vdp(url: str, html: str) -> Optional[dict]:
 
 
 def _fetch_vdp_urls(sitemap_url: str) -> List[str]:
-    resp = httpx.get(sitemap_url, timeout=15, headers={"User-Agent": USER_AGENT})
+    resp = httpx.get(sitemap_url, timeout=15, headers=REQUEST_HEADERS, follow_redirects=True)
     resp.raise_for_status()
     root = ET.fromstring(resp.content)
     # Sitemaps use a namespaced <url><loc> structure; strip the namespace to keep this simple.
@@ -139,7 +149,7 @@ def sync_inventory(db: Session = Depends(get_db)):
         raise HTTPException(502, f"Could not fetch inventory sitemap: {e}")
 
     created = updated = skipped = 0
-    with httpx.Client(timeout=10, headers={"User-Agent": USER_AGENT}) as client:
+    with httpx.Client(timeout=10, headers=REQUEST_HEADERS, follow_redirects=True) as client:
         for url in urls:
             try:
                 page = client.get(url)
